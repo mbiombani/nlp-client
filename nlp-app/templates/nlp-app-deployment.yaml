@@ -1,0 +1,247 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nlp-client
+  labels:
+    app: nlp-client
+spec:
+  selector:
+    matchLabels:
+      app: nlp-client
+  replicas: 2
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "true"
+      labels:
+        app: nlp-client
+        version: v1
+    spec:
+      containers:
+        - name: nlp-client
+          image: {{ printf "%s/nlp-client:%s" .Values.image.repository .Values.image.tag.NLPClient }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: 125Mi
+              cpu: 125m
+            limits:
+              memory: 400Mi
+              cpu: 400m
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          env:
+            - name: NLP_CLIENT_PORT
+              value: ":8080"
+            - name: RAKE_ENDPOINT
+              value: "http://rake-app.nlp-app.svc.cluster.local:8080"
+            - name: PROSE_ENDPOINT
+              value: "http://prose-app.nlp-app.svc.cluster.local:8080"
+            - name: LANG_ENDPOINT
+              value: "http://lang-app.nlp-app.svc.cluster.local:8080"
+            - name: DYNAMO_ENDPOINT
+              value: "http://dynamo-app.nlp-app.svc.cluster.local:8080"
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nlp-app-secret
+                  key: api-key
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prose-app
+  labels:
+    app: prose-app
+spec:
+  selector:
+    matchLabels:
+      app: prose-app
+  replicas: 2
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "true"
+      labels:
+        app: prose-app
+        version: v1
+    spec:
+      containers:
+        - name: prose-app
+          image: {{ printf "%s/prose-app:%s" .Values.image.repository .Values.image.tag.ProseApp }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: 125Mi
+              cpu: 125m
+            limits:
+              memory: 400Mi
+              cpu: 400m
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          env:
+            - name: PROSE_PORT
+              value: ":8080"
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nlp-app-secret
+                  key: api-key
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lang-app
+  labels:
+    app: lang-app
+spec:
+  selector:
+    matchLabels:
+      app: lang-app
+  replicas: 2
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "true"
+      labels:
+        app: lang-app
+        version: v1
+    spec:
+      containers:
+        - name: lang-app
+          image: {{ printf "%s/lang-app:%s" .Values.image.repository .Values.image.tag.LangApp }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: 125Mi
+              cpu: 125m
+            limits:
+              memory: 400Mi
+              cpu: 400m
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          env:
+            - name: LANG_PORT
+              value: ":8080"
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nlp-app-secret
+                  key: api-key
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rake-app
+  labels:
+    app: rake-app
+spec:
+  selector:
+    matchLabels:
+      app: rake-app
+  replicas: 2
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "true"
+      labels:
+        app: rake-app
+        version: v1
+    spec:
+      containers:
+        - name: rake-app
+          image: {{ printf "%s/rake-app:%s" .Values.image.repository .Values.image.tag.RakeApp }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: 125Mi
+              cpu: 125m
+            limits:
+              memory: 400Mi
+              cpu: 400m
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          env:
+            - name: RAKE_PORT
+              value: ":8080"
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nlp-app-secret
+                  key: api-key
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dynamo-app
+  labels:
+    app: dynamo-app
+spec:
+  selector:
+    matchLabels:
+      app: dynamo-app
+  replicas: 2
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "true"
+      labels:
+        app: dynamo-app
+        version: v1
+    spec:
+      serviceAccountName: dynamo-app-serviceaccount
+      securityContext: # temp bug fix for https://github.com/vmware-tanzu/velero-plugin-for-aws/issues/17
+        fsGroup: 65534
+      containers:
+        - name: dynamo-app
+          image: {{ printf "%s/dynamo-app:%s" .Values.image.repository .Values.image.tag.DynamoApp }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: 125Mi
+              cpu: 125m
+            limits:
+              memory: 400Mi
+              cpu: 400m
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          env:
+            - name: DYNAMO_PORT
+              value: ":8080"
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nlp-app-secret
+                  key: api-key
+            - name: AWS_REGION # required by DynamoDB session
+              value: "us-east-1"
